@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+:root {
+  background-color: #0f172a; /* Este es el color slate-900 */
+  color: white;
+}
