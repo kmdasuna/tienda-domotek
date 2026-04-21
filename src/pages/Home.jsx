@@ -147,10 +147,23 @@ const Home = () => {
                     {producto.categoria}
                   </div>
                 </div>
+                
                 <div className="p-6">
-                  <h4 className="text-white font-black text-sm uppercase italic tracking-tighter leading-tight line-clamp-2 min-h-[2.5rem] group-hover:text-blue-400 transition-colors">
-                    {producto.nombre}
-                  </h4>
+                  {/* EFECTO DE EXPANSIÓN DEL NOMBRE */}
+                  <div className="relative min-h-[2.5rem] group/nombre">
+                    <h4 className="text-white font-black text-sm uppercase italic tracking-tighter leading-tight 
+                                   line-clamp-2 
+                                   group-hover/nombre:line-clamp-none 
+                                   group-hover/nombre:absolute 
+                                   group-hover/nombre:z-20 
+                                   group-hover/nombre:bg-[#1e293b] 
+                                   group-hover/nombre:text-blue-400 
+                                   group-hover/nombre:shadow-2xl
+                                   transition-all duration-300 w-full">
+                      {producto.nombre}
+                    </h4>
+                  </div>
+
                   <div className="mt-4 flex items-center justify-between">
                     <span className="text-xl font-black text-white tracking-tighter">S/. {producto.precio}</span>
                     <div className="p-3 bg-blue-600/10 text-blue-500 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-all">
@@ -187,7 +200,7 @@ const Home = () => {
               </div>
               <div className="mt-4">
                 <span className={`text-[10px] font-bold uppercase ${productoSeleccionado.stock > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                   Disponibilidad: {productoSeleccionado.stock > 0 ? `${productoSeleccionado.stock} unidades` : 'Agotado'}
+                    Disponibilidad: {productoSeleccionado.stock > 0 ? `${productoSeleccionado.stock} unidades` : 'Agotado'}
                 </span>
               </div>
               <a 
