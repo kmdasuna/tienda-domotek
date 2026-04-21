@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 import { Search, ShoppingBag, ChevronRight, LayoutGrid, X } from 'lucide-react';
 import Navbar from '../components/Navbar';
@@ -19,22 +19,44 @@ const Home = () => {
     fetchProductos();
   }, []);
 
-  // Lógica del temporizador para el carrusel (5 segundos)
+  // LÓGICA PARA OBTENER PRODUCTOS DEL BANNER (2 por categoría, al azar)
+  const productosBanner = useMemo(() => {
+    if (productos.length === 0) return [];
+
+    // 1. Agrupar productos por categoría
+    const grupos = productos.reduce((acc, p) => {
+      if (!acc[p.categoria]) acc[p.categoria] = [];
+      acc[p.categoria].push(p);
+      return acc;
+    }, {});
+
+    let seleccionados = [];
+
+    // 2. Sacar 2 al azar de cada categoría
+    Object.values(grupos).forEach(items => {
+      const shuffled = [...items].sort(() => 0.5 - Math.random());
+      seleccionados.push(...shuffled.slice(0, 2));
+    });
+
+    // 3. Mezclar el resultado final y devolverlo
+    return seleccionados.sort(() => 0.5 - Math.random());
+  }, [productos]);
+
+  // Temporizador para el carrusel (3 segundos según pedido)
   useEffect(() => {
-    if (productos.length > 0) {
+    if (productosBanner.length > 0) {
       const intervalo = setInterval(() => {
-        setIndiceBanner((prev) => (prev + 1) % Math.min(productos.length, 3));
-      }, 4000);
+        setIndiceBanner((prev) => (prev + 1) % productosBanner.length);
+      }, 3000); // 3 segundos
       return () => clearInterval(intervalo);
     }
-  }, [productos]);
+  }, [productosBanner]);
 
   const fetchProductos = async () => {
     const { data } = await supabase.from('productos').select('*').order('id', { ascending: false });
     setProductos(data || []);
   };
 
-  // Obtener categorías únicas de los productos existentes
   const todasLasCategorias = productos.map(p => p.categoria);
   const categoriasDinamicas = [...new Set(todasLasCategorias)].filter(Boolean).sort();
 
@@ -73,13 +95,13 @@ const Home = () => {
             />
           </div>
 
-          {/* BANNER CARRUSEL DINÁMICO (Solo se muestra en "Todas") */}
-          {productos.length > 0 && categoriaSeleccionada === 'Todas' && busqueda === '' && (
+          {/* BANNER CARRUSEL DINÁMICO */}
+          {productosBanner.length > 0 && categoriaSeleccionada === 'Todas' && busqueda === '' && (
             <section className="mb-12 relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-blue-900 via-[#1e293b] to-slate-900 border border-blue-500/20 shadow-2xl min-h-[450px] flex items-center">
               
-              {/* Indicadores (Bolitas) */}
+              {/* Indicadores (Bolitas) dinámicos según el total aleatorio */}
               <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-3 z-20">
-                {[...Array(Math.min(productos.length, 3))].map((_, i) => (
+                {productosBanner.map((_, i) => (
                   <button 
                     key={i} 
                     onClick={() => setIndiceBanner(i)}
@@ -94,15 +116,15 @@ const Home = () => {
                     Novedad en Domotek
                   </span>
                   <h2 className="text-4xl md:text-7xl font-black text-white mt-6 leading-[0.95] tracking-tighter uppercase italic">
-                    {productos[indiceBanner].nombre}
+                    {productosBanner[indiceBanner].nombre}
                   </h2>
                   <p className="text-slate-400 mt-6 text-sm md:text-lg leading-relaxed max-w-md line-clamp-2 font-medium">
-                    {productos[indiceBanner].descripcion}
+                    {productosBanner[indiceBanner].descripcion}
                   </p>
                   <div className="flex items-center justify-center md:justify-start gap-6 mt-8">
-                    <div className="text-4xl font-black text-blue-400 tracking-tighter">S/. {productos[indiceBanner].precio}</div>
+                    <div className="text-4xl font-black text-blue-400 tracking-tighter">S/. {productosBanner[indiceBanner].precio}</div>
                     <button 
-                      onClick={() => setProductoSeleccionado(productos[indiceBanner])}
+                      onClick={() => setProductoSeleccionado(productosBanner[indiceBanner])}
                       className="bg-white text-blue-900 px-8 py-4 rounded-2xl font-black text-xs hover:bg-blue-500 hover:text-white transition-all transform hover:-translate-y-1 shadow-lg shadow-white/5 uppercase italic"
                     >
                       Ver producto
@@ -113,8 +135,8 @@ const Home = () => {
                 <div className="flex-1 flex justify-center relative animate-in fade-in slide-in-from-right-12 duration-1000">
                   <div className="absolute inset-0 bg-blue-600/20 blur-[120px] rounded-full animate-pulse"></div>
                   <img 
-                    key={indiceBanner}
-                    src={productos[indiceBanner].imagen_url} 
+                    key={productosBanner[indiceBanner].id}
+                    src={productosBanner[indiceBanner].imagen_url} 
                     alt="Destacado" 
                     className="relative h-72 md:h-[400px] object-contain drop-shadow-[0_35px_60px_rgba(0,0,0,0.6)] transition-all duration-700" 
                   />
@@ -149,7 +171,6 @@ const Home = () => {
                 </div>
                 
                 <div className="p-6">
-                  {/* EFECTO DE EXPANSIÓN DEL NOMBRE */}
                   <div className="relative min-h-[2.5rem] group/nombre">
                     <h4 className="text-white font-black text-sm uppercase italic tracking-tighter leading-tight 
                                    line-clamp-2 
@@ -177,7 +198,7 @@ const Home = () => {
         </main>
       </div>
 
-      {/* MODAL DE DETALLES (Pop-up) */}
+      {/* MODAL DE DETALLES */}
       {productoSeleccionado && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm" onClick={() => setProductoSeleccionado(null)}></div>
