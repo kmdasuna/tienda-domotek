@@ -168,7 +168,7 @@ const Home = () => {
       {productoSeleccionado && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm" onClick={() => setProductoSeleccionado(null)}></div>
-          <div className="relative bg-[#1e293b] w-full max-w-4xl rounded-[3rem] overflow-hidden border border-slate-700 shadow-2xl flex flex-col md:flex-row animate-in zoom-in-95 duration-300">
+          <div className="relative bg-[#1e293b] w-full max-w-4xl rounded-2xl md:rounded-[3rem] overflow-hidden border border-slate-700 shadow-2xl flex flex-col md:flex-row animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
             <button 
               onClick={() => setProductoSeleccionado(null)}
               className="absolute top-6 right-6 z-10 p-2 bg-slate-900 rounded-full text-slate-400 hover:text-white border border-slate-700 transition-all"
@@ -203,30 +203,6 @@ const Home = () => {
       )}
 
       <Footer />
-      {/* BOTÓN FLOTANTE DE WHATSAPP - ESTILO DOMOTEK */}
-      <a 
-        href="https://wa.me/51936374988?text=Hola Domotek! Vengo de la web y tengo una consulta." 
-        target="_blank" 
-        rel="noreferrer"
-        className="fixed bottom-6 right-6 z-[100] bg-green-600 p-4 rounded-[1.5rem] text-white shadow-[0_20px_50px_rgba(22,163,74,0.3)] hover:scale-110 hover:-translate-y-2 transition-all duration-300 active:scale-95 flex items-center gap-3 group border border-white/20"
-      >
-        {/* Texto que aparece al pasar el mouse */}
-        <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-500 font-black text-[10px] uppercase tracking-[0.2em] whitespace-nowrap italic">
-          ¿Consultas? Escríbenos
-        </span>
-        <svg 
-          viewBox="0 0 24 24" 
-          width="24" 
-          height="24" 
-          stroke="currentColor" 
-          strokeWidth="2.5" 
-          fill="none" 
-          strokeLinecap="round" 
-          strokeLinejoin="round"
-        >
-          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 1 1-7.6-11.7 8.38 8.38 0 0 1 3.8.9L21 3z"></path>
-        </svg>
-      </a>
     </div>
   );
 };
