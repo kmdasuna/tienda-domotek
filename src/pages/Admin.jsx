@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, PlusCircle, Package, Trash2, Edit3, Search, XCircle } from 'lucide-react';
+import { LogOut, PlusCircle, Package, Trash2, Edit3, Search, XCircle, Tag } from 'lucide-react';
 
 const Admin = () => {
   const [productos, setProductos] = useState([]);
   const [busquedaAdmin, setBusquedaAdmin] = useState('');
   const [loading, setLoading] = useState(false);
   
-  // Estado inicial del formulario
-  const estadoInicial = { nombre: '', precio: '', categoria: 'Cámaras de Seguridad', imagen_url: '', descripcion: '', stock: 0 };
+  // Estado inicial actualizado con en_promocion
+  const estadoInicial = { nombre: '', precio: '', categoria: 'Cámaras de Seguridad', imagen_url: '', descripcion: '', stock: 0, en_promocion: false };
   const [nuevoProducto, setNuevoProducto] = useState(estadoInicial);
   
   const navigate = useNavigate();
@@ -132,10 +132,11 @@ const Admin = () => {
                 value={nuevoProducto.categoria} onChange={(e) => setNuevoProducto({...nuevoProducto, categoria: e.target.value})}
               >
                 <option value="Cámaras de Seguridad">Cámaras de Seguridad</option>
-                <option value="Accesorios para celular">Accesorios para celular</option>
                 <option value="Telecomunicaciones">Telecomunicaciones</option>
                 <option value="Cómputo">Cómputo</option>
+                <option value="Accesorios">Accesorios</option>
                 <option value="Herramientas">Herramientas</option>
+                <option value="Otros">Otros</option>
               </select>
             </div>
 
@@ -156,10 +157,27 @@ const Admin = () => {
                 value={nuevoProducto.descripcion} onChange={(e) => setNuevoProducto({...nuevoProducto, descripcion: e.target.value})}
               ></textarea>
             </div>
+
+            {/* CHECKBOX DE PROMOCIÓN ESTILIZADO */}
+            <div className="flex items-center justify-between bg-[#0f172a] border border-slate-700 p-4 rounded-2xl cursor-pointer hover:border-amber-500/50 transition-all"
+                 onClick={() => setNuevoProducto({...nuevoProducto, en_promocion: !nuevoProducto.en_promocion})}>
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg transition-all ${nuevoProducto.en_promocion ? 'bg-amber-500 text-black' : 'bg-slate-800 text-slate-500'}`}>
+                  <Tag size={16} />
+                </div>
+                <div>
+                  <p className="text-sm font-black text-white uppercase italic tracking-tighter">¿Producto en Oferta?</p>
+                  <p className="text-[10px] text-slate-400 font-bold">Destacarlo en el inicio</p>
+                </div>
+              </div>
+              <div className={`w-12 h-6 rounded-full p-1 transition-all duration-300 ${nuevoProducto.en_promocion ? 'bg-amber-500' : 'bg-slate-700'}`}>
+                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${nuevoProducto.en_promocion ? 'translate-x-6' : 'translate-x-0'}`}></div>
+              </div>
+            </div>
             
             <button 
               disabled={loading}
-              className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg active:scale-95 ${
+              className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg active:scale-95 mt-2 ${
                 nuevoProducto.id ? 'bg-yellow-600 hover:bg-yellow-500 shadow-yellow-900/20' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/20'
               }`}
             >
@@ -194,7 +212,12 @@ const Admin = () => {
                       <img src={p.imagen_url} alt="" className="max-h-full object-contain" />
                     </div>
                     <div>
-                      <p className="text-sm font-black text-white uppercase italic tracking-tighter line-clamp-1">{p.nombre}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-black text-white uppercase italic tracking-tighter line-clamp-1">{p.nombre}</p>
+                        {p.en_promocion && (
+                          <span className="bg-amber-500 text-black text-[8px] px-1.5 py-0.5 rounded-sm font-black uppercase tracking-widest">Promo</span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-3 mt-1">
                         <span className="text-[9px] font-bold text-blue-500 uppercase bg-blue-500/5 px-2 py-0.5 rounded border border-blue-500/10">{p.categoria}</span>
                         <span className="text-[10px] text-slate-400 font-bold">S/. {p.precio}</span>
