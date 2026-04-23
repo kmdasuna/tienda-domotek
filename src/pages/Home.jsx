@@ -10,7 +10,7 @@ const ORDEN_CATEGORIAS = [
   'Cámaras de Seguridad', 
   'Telecomunicaciones', 
   'Cómputo', 
-  'Accesorios', 
+  'Accesorios para Celular', 
   'Herramientas', 
   'Otros'
 ];

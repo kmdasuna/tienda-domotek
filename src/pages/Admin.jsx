@@ -134,7 +134,7 @@ const Admin = () => {
                 <option value="Cámaras de Seguridad">Cámaras de Seguridad</option>
                 <option value="Telecomunicaciones">Telecomunicaciones</option>
                 <option value="Cómputo">Cómputo</option>
-                <option value="Accesorios">Accesorios</option>
+                <option value="Accesorios para Celular">Accesorios para Celular</option>
                 <option value="Herramientas">Herramientas</option>
                 <option value="Otros">Otros</option>
               </select>
