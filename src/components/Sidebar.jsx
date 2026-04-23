@@ -1,5 +1,5 @@
 import { X, MapPin } from 'lucide-react'; 
-import logoDomotek from '../assets/logo_store_20615343405-removebg-preview.png';
+import logoDomotek from '../assets/logo domotekv2.png';
 
 const Sidebar = ({ menuAbierto, setMenuAbierto, categoriaSeleccionada, setCategoriaSeleccionada, categorias }) => {
   return (
