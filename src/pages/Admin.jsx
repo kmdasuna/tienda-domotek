@@ -3,13 +3,21 @@ import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, PlusCircle, Package, Trash2, Edit3, Search, XCircle, Tag } from 'lucide-react';
 
+const CATEGORIAS_DISPONIBLES = [
+  'Cámaras de Seguridad',
+  'Telecomunicaciones',
+  'Cómputo',
+  'Accesorios para celular',
+  'Herramientas',
+  'Otros'
+];
+
 const Admin = () => {
   const [productos, setProductos] = useState([]);
   const [busquedaAdmin, setBusquedaAdmin] = useState('');
   const [loading, setLoading] = useState(false);
   
-  // Estado inicial actualizado con en_promocion
-  const estadoInicial = { nombre: '', precio: '', categoria: 'Cámaras de Seguridad', imagen_url: '', descripcion: '', stock: 0, en_promocion: false };
+  const estadoInicial = { nombre: '', precio: '', categoria: '', imagen_url: '', descripcion: '', stock: 0, en_promocion: false };
   const [nuevoProducto, setNuevoProducto] = useState(estadoInicial);
   
   const navigate = useNavigate();
@@ -28,15 +36,20 @@ const Admin = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validación: Obligar a seleccionar al menos una categoría
+    if (!nuevoProducto.categoria) {
+      alert("Por favor, selecciona al menos una categoría.");
+      return;
+    }
+
     setLoading(true);
     
     if (nuevoProducto.id) {
-      // MODO EDICIÓN
       const { error } = await supabase.from('productos').update(nuevoProducto).eq('id', nuevoProducto.id);
       if (error) alert("Error al actualizar: " + error.message);
       else alert("¡Producto actualizado correctamente!");
     } else {
-      // MODO CREACIÓN
       const { error } = await supabase.from('productos').insert([nuevoProducto]);
       if (error) alert("Error al subir: " + error.message);
       else alert("¡Producto agregado con éxito!");
@@ -62,14 +75,25 @@ const Admin = () => {
 
   const cancelarEdicion = () => setNuevoProducto(estadoInicial);
 
-  // Filtrado para el buscador del inventario
+  // Lógica para seleccionar múltiples categorías
+  const handleCategoriaToggle = (cat) => {
+    let catsActuales = nuevoProducto.categoria ? nuevoProducto.categoria.split(', ') : [];
+    
+    if (catsActuales.includes(cat)) {
+      catsActuales = catsActuales.filter(c => c !== cat);
+    } else {
+      catsActuales.push(cat);
+    }
+    
+    setNuevoProducto({...nuevoProducto, categoria: catsActuales.join(', ')});
+  };
+
   const productosFiltradosAdmin = productos.filter(p => 
     p.nombre.toLowerCase().includes(busquedaAdmin.toLowerCase())
   );
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-slate-200 p-4 md:p-8 font-sans">
-      {/* HEADER */}
       <div className="max-w-6xl mx-auto flex justify-between items-center mb-8 bg-[#1e293b] p-6 rounded-[2rem] border border-slate-700 shadow-2xl">
         <div>
           <h1 className="text-2xl font-black text-white italic uppercase tracking-tighter">Panel Domotek</h1>
@@ -82,7 +106,7 @@ const Admin = () => {
 
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* FORMULARIO (4 columnas) */}
+        {/* FORMULARIO */}
         <div className="lg:col-span-5 bg-[#1e293b] p-8 rounded-[2.5rem] border border-slate-700 shadow-xl h-fit sticky top-8">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-black text-white flex items-center gap-2 italic uppercase">
@@ -100,7 +124,7 @@ const Admin = () => {
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-500 uppercase ml-2">Nombre del Producto</label>
               <input 
-                type="text" required placeholder="Ej. Cámara IP Exterior 4K"
+                type="text" required placeholder="Ej. Cable de Red CAT6"
                 className="w-full bg-[#0f172a] border border-slate-700 p-4 rounded-2xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm"
                 value={nuevoProducto.nombre} onChange={(e) => setNuevoProducto({...nuevoProducto, nombre: e.target.value})}
               />
@@ -125,19 +149,28 @@ const Admin = () => {
               </div>
             </div>
             
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-500 uppercase ml-2">Categoría</label>
-              <select 
-                className="w-full bg-[#0f172a] border border-slate-700 p-4 rounded-2xl outline-none focus:border-blue-500 text-sm appearance-none"
-                value={nuevoProducto.categoria} onChange={(e) => setNuevoProducto({...nuevoProducto, categoria: e.target.value})}
-              >
-                <option value="Cámaras de Seguridad">Cámaras de Seguridad</option>
-                <option value="Telecomunicaciones">Telecomunicaciones</option>
-                <option value="Cómputo">Cómputo</option>
-                <option value="Accesorios para celular">Accesorios para celular</option>
-                <option value="Herramientas">Herramientas</option>
-                <option value="Otros">Otros</option>
-              </select>
+            {/* NUEVO SISTEMA DE MULTI-CATEGORÍA */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase ml-2">Categorías (Puedes elegir varias)</label>
+              <div className="flex flex-wrap gap-2 bg-[#0f172a] border border-slate-700 p-4 rounded-2xl">
+                {CATEGORIAS_DISPONIBLES.map(cat => {
+                  const seleccionado = nuevoProducto.categoria && nuevoProducto.categoria.split(', ').includes(cat);
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => handleCategoriaToggle(cat)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                        seleccionado 
+                          ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-900/20' 
+                          : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="space-y-1">
@@ -158,7 +191,6 @@ const Admin = () => {
               ></textarea>
             </div>
 
-            {/* CHECKBOX DE PROMOCIÓN ESTILIZADO */}
             <div className="flex items-center justify-between bg-[#0f172a] border border-slate-700 p-4 rounded-2xl cursor-pointer hover:border-amber-500/50 transition-all"
                  onClick={() => setNuevoProducto({...nuevoProducto, en_promocion: !nuevoProducto.en_promocion})}>
               <div className="flex items-center gap-3">
@@ -186,7 +218,7 @@ const Admin = () => {
           </form>
         </div>
 
-        {/* LISTADO (7 columnas) */}
+        {/* LISTADO */}
         <div className="lg:col-span-7 bg-[#1e293b] p-8 rounded-[2.5rem] border border-slate-700 shadow-xl">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <h2 className="text-xl font-black text-white flex items-center gap-2 italic uppercase">
@@ -207,19 +239,28 @@ const Admin = () => {
             {productosFiltradosAdmin.length > 0 ? (
               productosFiltradosAdmin.map(p => (
                 <div key={p.id} className="group flex items-center justify-between p-4 bg-[#0f172a] rounded-3xl border border-slate-800 hover:border-slate-600 transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-white rounded-2xl p-2 flex items-center justify-center">
+                  <div className="flex items-center gap-4 w-full overflow-hidden">
+                    <div className="w-14 h-14 bg-white rounded-2xl p-2 flex shrink-0 items-center justify-center">
                       <img src={p.imagen_url} alt="" className="max-h-full object-contain" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-black text-white uppercase italic tracking-tighter line-clamp-1">{p.nombre}</p>
+                        <p className="text-sm font-black text-white uppercase italic tracking-tighter truncate">{p.nombre}</p>
                         {p.en_promocion && (
-                          <span className="bg-amber-500 text-black text-[8px] px-1.5 py-0.5 rounded-sm font-black uppercase tracking-widest">Promo</span>
+                          <span className="bg-amber-500 text-black text-[8px] px-1.5 py-0.5 rounded-sm font-black uppercase tracking-widest shrink-0">Promo</span>
                         )}
                       </div>
+                      
+                      {/* Mostrar las múltiples categorías como pildoras */}
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        {p.categoria && p.categoria.split(', ').map((cat, idx) => (
+                          <span key={idx} className="text-[8px] font-bold text-blue-500 uppercase bg-blue-500/5 px-2 py-0.5 rounded border border-blue-500/10 whitespace-nowrap">
+                            {cat}
+                          </span>
+                        ))}
+                      </div>
+
                       <div className="flex items-center gap-3 mt-1">
-                        <span className="text-[9px] font-bold text-blue-500 uppercase bg-blue-500/5 px-2 py-0.5 rounded border border-blue-500/10">{p.categoria}</span>
                         <span className="text-[10px] text-slate-400 font-bold">S/. {p.precio}</span>
                         <span className={`text-[10px] font-bold ${p.stock <= 3 ? 'text-red-500' : 'text-green-500'}`}>
                           Stock: {p.stock}
@@ -227,17 +268,11 @@ const Admin = () => {
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => prepararEdicion(p)}
-                      className="p-3 bg-blue-500/10 text-blue-500 rounded-xl hover:bg-blue-500 hover:text-white transition-all"
-                    >
+                  <div className="flex gap-2 shrink-0 ml-2">
+                    <button onClick={() => prepararEdicion(p)} className="p-3 bg-blue-500/10 text-blue-500 rounded-xl hover:bg-blue-500 hover:text-white transition-all">
                       <Edit3 size={16} />
                     </button>
-                    <button 
-                      onClick={() => eliminarProducto(p.id)}
-                      className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all"
-                    >
+                    <button onClick={() => eliminarProducto(p.id)} className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all">
                       <Trash2 size={16} />
                     </button>
                   </div>

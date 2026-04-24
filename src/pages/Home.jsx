@@ -1,11 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
-import { Search, ShoppingBag, ChevronRight, LayoutGrid, X, Tag, Sparkles } from 'lucide-react';
+import { Search, ChevronRight, LayoutGrid, X, Tag, Sparkles } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import Footer from '../components/Footer';
 
-// DEFINIMOS EL ORDEN OFICIAL DE DOMOTEK
 const ORDEN_CATEGORIAS = [
   'Cámaras de Seguridad', 
   'Telecomunicaciones', 
@@ -32,28 +31,30 @@ const Home = () => {
     setProductos(data || []);
   };
 
-  // 1. LÓGICA DEL BANNER: PROMOS + 2 DE CADA CATEGORÍA
   const productosBanner = useMemo(() => {
     if (productos.length === 0) return [];
 
     const promos = productos.filter(p => p.en_promocion).sort(() => 0.5 - Math.random()).slice(0, 2);
     
-    const grupos = productos.reduce((acc, p) => {
-      if (!acc[p.categoria]) acc[p.categoria] = [];
-      acc[p.categoria].push(p);
-      return acc;
-    }, {});
+    const grupos = {};
+    productos.forEach(p => {
+      const cats = p.categoria ? p.categoria.split(', ') : ['Otros'];
+      cats.forEach(cat => {
+        if (!grupos[cat]) grupos[cat] = [];
+        grupos[cat].push(p);
+      });
+    });
 
     let resto = [];
     Object.values(grupos).forEach(items => {
-      const shuffled = [...items].filter(p => !p.en_promocion).sort(() => 0.5 - Math.random());
+      const disponibles = items.filter(p => !p.en_promocion && !resto.some(r => r.id === p.id));
+      const shuffled = [...disponibles].sort(() => 0.5 - Math.random());
       resto.push(...shuffled.slice(0, 2));
     });
 
-    return [...promos, ...resto].sort(() => 0.5 - Math.random()); // Mezclamos promos y normales
+    return [...promos, ...resto].sort(() => 0.5 - Math.random());
   }, [productos]);
 
-  // Temporizador de 3 segundos
   useEffect(() => {
     if (productosBanner.length > 0) {
       const intervalo = setInterval(() => {
@@ -63,26 +64,25 @@ const Home = () => {
     }
   }, [productosBanner]);
 
-  // 2. ORDENAR CATEGORÍAS SEGÚN EL DUEÑO
   const categoriasDinamicas = useMemo(() => {
-    const existentes = [...new Set(productos.map(p => p.categoria))].filter(Boolean);
-    // Ordenamos basándonos en nuestro array oficial
+    const todasLasCat = productos.flatMap(p => p.categoria ? p.categoria.split(', ') : []);
+    const existentes = [...new Set(todasLasCat)].filter(Boolean);
+    
     return existentes.sort((a, b) => {
       let indexA = ORDEN_CATEGORIAS.indexOf(a);
       let indexB = ORDEN_CATEGORIAS.indexOf(b);
-      if (indexA === -1) indexA = 99; // Lo que no esté en la lista va al final
+      if (indexA === -1) indexA = 99; 
       if (indexB === -1) indexB = 99;
       return indexA - indexB;
     });
   }, [productos]);
 
-  // 3. FILTRADO Y ORDEN DE LA GRILLA (Promociones primero)
   const productosFiltrados = useMemo(() => {
     return productos
       .filter(p => {
         const nombre = p.nombre ? p.nombre.toLowerCase() : "";
         const coincideNombre = nombre.includes(busqueda.toLowerCase());
-        const coincideCat = categoriaSeleccionada === 'Todas' || p.categoria === categoriaSeleccionada;
+        const coincideCat = categoriaSeleccionada === 'Todas' || (p.categoria && p.categoria.includes(categoriaSeleccionada));
         return coincideNombre && coincideCat;
       })
       .sort((a, b) => (b.en_promocion ? 1 : 0) - (a.en_promocion ? 1 : 0)); 
@@ -101,8 +101,7 @@ const Home = () => {
           setCategoriaSeleccionada={setCategoriaSeleccionada}
         />
 
-        <main className="flex-1 w-full">
-          {/* BUSCADOR */}
+        <main className="flex-1 w-full min-w-0">
           <div className="relative mb-10 group">
             <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
             <input 
@@ -114,7 +113,6 @@ const Home = () => {
             />
           </div>
 
-          {/* BANNER DINÁMICO */}
           {productosBanner.length > 0 && categoriaSeleccionada === 'Todas' && busqueda === '' && (
             <section className={`mb-12 relative overflow-hidden rounded-[2.5rem] border transition-all duration-500 min-h-[450px] flex items-center
               ${productosBanner[indiceBanner].en_promocion 
@@ -155,37 +153,44 @@ const Home = () => {
             </section>
           )}
 
-          {/* GRILLA DE PRODUCTOS */}
+          <div className="flex justify-between items-center mb-8">
+            <h3 className="text-xl font-black text-white italic uppercase tracking-tighter flex items-center gap-3">
+              <LayoutGrid className="text-blue-500" size={20} />
+              {categoriaSeleccionada} <span className="text-slate-600 text-sm font-bold">/ {productosFiltrados.length} items</span>
+            </h3>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {productosFiltrados.map((producto) => (
               <div key={producto.id} onClick={() => setProductoSeleccionado(producto)}
-                className={`group bg-[#1e293b] rounded-[2rem] overflow-hidden border transition-all cursor-pointer hover:shadow-2xl
+                className={`group bg-[#1e293b] rounded-[2rem] overflow-hidden border transition-all cursor-pointer hover:shadow-2xl flex flex-col
                   ${producto.en_promocion 
                     ? 'border-amber-500/50 shadow-lg shadow-amber-500/10' 
                     : 'border-slate-800 hover:border-blue-500/50'}`}>
                 
-                <div className="h-56 bg-white p-6 relative overflow-hidden flex items-center justify-center">
+                <div className="h-56 bg-white p-6 relative overflow-hidden flex items-center justify-center shrink-0">
                   <img src={producto.imagen_url} alt={producto.nombre} className="h-full object-contain group-hover:scale-110 transition-transform duration-500" />
                   
-                  {/* BADGE DE PROMOCIÓN (Abajo a la izquierda) */}
                   {producto.en_promocion && (
                     <div className="absolute bottom-4 left-4 z-10 bg-amber-500 text-black text-[9px] font-black px-3 py-1 rounded-full uppercase italic flex items-center gap-1 shadow-lg">
                       <Sparkles size={10} /> Oferta
                     </div>
                   )}
 
-                  {/* BADGE DE CATEGORÍA (Arriba a la derecha) */}
-                  <div className="absolute top-4 right-4 z-10 bg-slate-900/90 text-white text-[10px] font-black px-3 py-1.5 rounded-full uppercase italic border border-slate-700">
-                    {producto.categoria}
+                  {/* Mostrar la primera categoría en la grilla para no saturar el diseño */}
+                  <div className="absolute top-4 right-4 z-10 bg-slate-900/90 text-white text-[10px] font-black px-3 py-1.5 rounded-full uppercase italic border border-slate-700 max-w-[120px] truncate">
+                    {producto.categoria ? producto.categoria.split(', ')[0] : 'Otros'}
                   </div>
                 </div>
                 
-                <div className="p-6">
-                  <div className="relative min-h-[2.5rem] group/nombre">
-                    <h4 className={`font-black text-sm uppercase italic tracking-tighter leading-tight line-clamp-2 group-hover/nombre:line-clamp-none group-hover/nombre:absolute group-hover/nombre:z-20 group-hover/nombre:bg-[#1e293b] group-hover/nombre:shadow-2xl group-hover/nombre:p-1 group-hover/nombre:rounded-md transition-all duration-300 w-full
-                      ${producto.en_promocion ? 'text-amber-400' : 'text-white group-hover/nombre:text-blue-400'}`}>
-                      {producto.nombre}
-                    </h4>
+                <div className="p-6 flex flex-col flex-grow justify-between">
+                  <div>
+                    <div className="relative min-h-[2.5rem] group/nombre">
+                      <h4 className={`font-black text-sm uppercase italic tracking-tighter leading-tight line-clamp-2 group-hover/nombre:line-clamp-none group-hover/nombre:absolute group-hover/nombre:z-20 group-hover/nombre:bg-[#1e293b] group-hover/nombre:shadow-2xl group-hover/nombre:p-1 group-hover/nombre:rounded-md transition-all duration-300 w-full
+                        ${producto.en_promocion ? 'text-amber-400' : 'text-white group-hover/nombre:text-blue-400'}`}>
+                        {producto.nombre}
+                      </h4>
+                    </div>
                   </div>
                   <div className="mt-4 flex items-center justify-between">
                     <span className={`text-xl font-black tracking-tighter ${producto.en_promocion ? 'text-amber-500' : 'text-white'}`}>
@@ -202,7 +207,6 @@ const Home = () => {
         </main>
       </div>
 
-      {/* MODAL DE DETALLES */}
       {productoSeleccionado && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm" onClick={() => setProductoSeleccionado(null)}></div>
@@ -217,18 +221,21 @@ const Home = () => {
               <img src={productoSeleccionado.imagen_url} alt="" className="max-h-[350px] object-contain drop-shadow-2xl" />
             </div>
             
-            {/* Contenedor del texto con 'relative' */}
             <div className="flex-1 p-10 md:p-14 relative">
-              
-              {/* STICKER DE OFERTA EN EL MODAL */}
               {productoSeleccionado.en_promocion && (
                 <span className="bg-amber-500 text-black text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest flex items-center gap-2 w-fit mb-4 animate-bounce">
                   <Sparkles size={12} /> ¡Oferta Especial!
                 </span>
               )}
 
-              <span className="text-blue-500 font-black text-[10px] uppercase tracking-[0.3em]">{productoSeleccionado.categoria}</span>
-              <h2 className="text-3xl md:text-4xl font-black text-white mt-4 italic uppercase leading-none tracking-tighter">{productoSeleccionado.nombre}</h2>
+              {/* Mostrar todas las categorías separadas visualmente en el modal */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {productoSeleccionado.categoria && productoSeleccionado.categoria.split(', ').map((cat, idx) => (
+                  <span key={idx} className="text-blue-500 font-black text-[10px] uppercase tracking-[0.3em]">{cat}</span>
+                ))}
+              </div>
+
+              <h2 className="text-3xl md:text-4xl font-black text-white italic uppercase leading-none tracking-tighter">{productoSeleccionado.nombre}</h2>
               <div className={`text-3xl font-black mt-6 tracking-tighter ${productoSeleccionado.en_promocion ? 'text-amber-500' : 'text-blue-400'}`}>
                 S/. {productoSeleccionado.precio}
               </div>
