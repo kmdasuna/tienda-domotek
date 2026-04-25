@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
-import { Search, ChevronRight, LayoutGrid, X, Tag, Sparkles } from 'lucide-react';
+import { Search, ChevronRight, ChevronLeft, LayoutGrid, X, Tag, Sparkles } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import Footer from '../components/Footer';
@@ -14,6 +14,9 @@ const ORDEN_CATEGORIAS = [
   'Otros'
 ];
 
+// Constante para definir cuántos productos queremos por página
+const PRODUCTOS_POR_PAGINA = 20;
+
 const Home = () => {
   const [productos, setProductos] = useState([]);
   const [busqueda, setBusqueda] = useState('');
@@ -21,10 +24,18 @@ const Home = () => {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [indiceBanner, setIndiceBanner] = useState(0);
+  
+  // Nuevo estado para la página actual
+  const [paginaActual, setPaginaActual] = useState(1);
 
   useEffect(() => {
     fetchProductos();
   }, []);
+
+  // Reiniciar a la página 1 si el usuario busca algo o cambia de categoría
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [busqueda, categoriaSeleccionada]);
 
   const fetchProductos = async () => {
     const { data } = await supabase.from('productos').select('*').order('id', { ascending: false });
@@ -87,6 +98,22 @@ const Home = () => {
       })
       .sort((a, b) => (b.en_promocion ? 1 : 0) - (a.en_promocion ? 1 : 0)); 
   }, [productos, busqueda, categoriaSeleccionada]);
+
+  // LÓGICA DE PAGINACIÓN
+  const indiceUltimoProducto = paginaActual * PRODUCTOS_POR_PAGINA;
+  const indicePrimerProducto = indiceUltimoProducto - PRODUCTOS_POR_PAGINA;
+  // Cortamos el array total para sacar solo los 20 que tocan
+  const productosPaginados = productosFiltrados.slice(indicePrimerProducto, indiceUltimoProducto);
+  const totalPaginas = Math.ceil(productosFiltrados.length / PRODUCTOS_POR_PAGINA);
+
+  // Función para manejar el cambio de página y scrollear hacia arriba
+  const cambiarPagina = (nuevaPagina) => {
+    setPaginaActual(nuevaPagina);
+    const grillaElement = document.getElementById('inicio-grilla');
+    if (grillaElement) {
+      grillaElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-slate-200 font-sans">
@@ -153,15 +180,17 @@ const Home = () => {
             </section>
           )}
 
-          <div className="flex justify-between items-center mb-8">
+          {/* Ancla para el scroll cuando se cambia de página */}
+          <div id="inicio-grilla" className="flex justify-between items-center mb-8 scroll-mt-8">
             <h3 className="text-xl font-black text-white italic uppercase tracking-tighter flex items-center gap-3">
               <LayoutGrid className="text-blue-500" size={20} />
-              {categoriaSeleccionada} <span className="text-slate-600 text-sm font-bold">/ {productosFiltrados.length} items</span>
+              {categoriaSeleccionada} <span className="text-slate-600 text-sm font-bold">/ {productosFiltrados.length} items totales</span>
             </h3>
           </div>
 
+          {/* Cambiamos productosFiltrados.map por productosPaginados.map */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {productosFiltrados.map((producto) => (
+            {productosPaginados.map((producto) => (
               <div key={producto.id} onClick={() => setProductoSeleccionado(producto)}
                 className={`group bg-[#1e293b] rounded-[2rem] overflow-hidden border transition-all cursor-pointer hover:shadow-2xl flex flex-col
                   ${producto.en_promocion 
@@ -177,7 +206,6 @@ const Home = () => {
                     </div>
                   )}
 
-                  {/* Mostrar la primera categoría en la grilla para no saturar el diseño */}
                   <div className="absolute top-4 right-4 z-10 bg-slate-900/90 text-white text-[10px] font-black px-3 py-1.5 rounded-full uppercase italic border border-slate-700 max-w-[120px] truncate">
                     {producto.categoria ? producto.categoria.split(', ')[0] : 'Otros'}
                   </div>
@@ -204,6 +232,31 @@ const Home = () => {
               </div>
             ))}
           </div>
+
+          {/* CONTROLES DE PAGINACIÓN */}
+          {totalPaginas > 1 && (
+            <div className="flex justify-center items-center gap-4 mt-12 mb-8">
+              <button
+                onClick={() => cambiarPagina(Math.max(paginaActual - 1, 1))}
+                disabled={paginaActual === 1}
+                className="p-3 rounded-2xl bg-[#1e293b] border border-slate-700 text-slate-400 hover:text-white hover:border-blue-500 hover:bg-blue-500/10 disabled:opacity-30 disabled:pointer-events-none transition-all"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              
+              <div className="bg-[#1e293b] border border-slate-700 px-6 py-3 rounded-2xl text-xs font-bold text-slate-400 uppercase tracking-widest">
+                Página <span className="text-white mx-1 text-sm">{paginaActual}</span> de <span className="text-white mx-1 text-sm">{totalPaginas}</span>
+              </div>
+
+              <button
+                onClick={() => cambiarPagina(Math.min(paginaActual + 1, totalPaginas))}
+                disabled={paginaActual === totalPaginas}
+                className="p-3 rounded-2xl bg-[#1e293b] border border-slate-700 text-slate-400 hover:text-white hover:border-blue-500 hover:bg-blue-500/10 disabled:opacity-30 disabled:pointer-events-none transition-all"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          )}
         </main>
       </div>
 
@@ -228,7 +281,6 @@ const Home = () => {
                 </span>
               )}
 
-              {/* Mostrar todas las categorías separadas visualmente en el modal */}
               <div className="flex flex-wrap gap-2 mb-4">
                 {productoSeleccionado.categoria && productoSeleccionado.categoria.split(', ').map((cat, idx) => (
                   <span key={idx} className="text-blue-500 font-black text-[10px] uppercase tracking-[0.3em]">{cat}</span>
