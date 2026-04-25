@@ -109,10 +109,9 @@ const Home = () => {
   // Función para manejar el cambio de página y scrollear hacia arriba
   const cambiarPagina = (nuevaPagina) => {
     setPaginaActual(nuevaPagina);
-    const grillaElement = document.getElementById('inicio-grilla');
-    if (grillaElement) {
-      grillaElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 100);
   };
 
   return (
