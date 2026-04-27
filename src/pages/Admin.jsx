@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, PlusCircle, Package, Trash2, Edit3, Search, XCircle, Tag } from 'lucide-react';
+import { LogOut, PlusCircle, Package, Trash2, Edit3, Search, XCircle, Tag, Filter } from 'lucide-react';
 
 const CATEGORIAS_DISPONIBLES = [
   'Cámaras de Seguridad',
@@ -15,6 +15,7 @@ const CATEGORIAS_DISPONIBLES = [
 const Admin = () => {
   const [productos, setProductos] = useState([]);
   const [busquedaAdmin, setBusquedaAdmin] = useState('');
+  const [filtroCategoriaAdmin, setFiltroCategoriaAdmin] = useState('Todas'); // Nuevo estado para filtrar
   const [loading, setLoading] = useState(false);
   
   const estadoInicial = { nombre: '', precio: '', categoria: '', imagen_url: '', descripcion: '', stock: 0, en_promocion: false };
@@ -36,15 +37,12 @@ const Admin = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validación: Obligar a seleccionar al menos una categoría
     if (!nuevoProducto.categoria) {
       alert("Por favor, selecciona al menos una categoría.");
       return;
     }
 
     setLoading(true);
-    
     if (nuevoProducto.id) {
       const { error } = await supabase.from('productos').update(nuevoProducto).eq('id', nuevoProducto.id);
       if (error) alert("Error al actualizar: " + error.message);
@@ -61,7 +59,7 @@ const Admin = () => {
   };
 
   const eliminarProducto = async (id) => {
-    if (window.confirm("¿Estás seguro de eliminar este producto? Esta acción no se puede deshacer.")) {
+    if (window.confirm("¿Estás seguro de eliminar este producto?")) {
       const { error } = await supabase.from('productos').delete().eq('id', id);
       if (error) alert("Error al eliminar");
       else fetchProductos();
@@ -70,30 +68,34 @@ const Admin = () => {
 
   const prepararEdicion = (p) => {
     setNuevoProducto(p);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Ya no necesitamos scrollear hasta arriba de la página completa, 
+    // pero podemos asegurar que el contenedor del formulario suba al inicio.
+    const formElement = document.getElementById('form-container');
+    if (formElement) formElement.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const cancelarEdicion = () => setNuevoProducto(estadoInicial);
 
-  // Lógica para seleccionar múltiples categorías
   const handleCategoriaToggle = (cat) => {
     let catsActuales = nuevoProducto.categoria ? nuevoProducto.categoria.split(', ') : [];
-    
     if (catsActuales.includes(cat)) {
       catsActuales = catsActuales.filter(c => c !== cat);
     } else {
       catsActuales.push(cat);
     }
-    
     setNuevoProducto({...nuevoProducto, categoria: catsActuales.join(', ')});
   };
 
-  const productosFiltradosAdmin = productos.filter(p => 
-    p.nombre.toLowerCase().includes(busquedaAdmin.toLowerCase())
-  );
+  // LÓGICA DE FILTRADO AVANZADO (Nombre + Categoría)
+  const productosFiltradosAdmin = productos.filter(p => {
+    const coincideNombre = p.nombre.toLowerCase().includes(busquedaAdmin.toLowerCase());
+    const coincideCat = filtroCategoriaAdmin === 'Todas' || (p.categoria && p.categoria.includes(filtroCategoriaAdmin));
+    return coincideNombre && coincideCat;
+  });
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-slate-200 p-4 md:p-8 font-sans">
+      {/* HEADER */}
       <div className="max-w-6xl mx-auto flex justify-between items-center mb-8 bg-[#1e293b] p-6 rounded-[2rem] border border-slate-700 shadow-2xl">
         <div>
           <h1 className="text-2xl font-black text-white italic uppercase tracking-tighter">Panel Domotek</h1>
@@ -104,10 +106,13 @@ const Admin = () => {
         </button>
       </div>
 
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        {/* FORMULARIO */}
-        <div className="lg:col-span-5 bg-[#1e293b] p-8 rounded-[2.5rem] border border-slate-700 shadow-xl h-fit sticky top-8">
+        {/* FORMULARIO CON SCROLL INDEPENDIENTE */}
+        <div 
+          id="form-container"
+          className="lg:col-span-5 bg-[#1e293b] p-8 rounded-[2.5rem] border border-slate-700 shadow-xl lg:sticky lg:top-8 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar"
+        >
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-black text-white flex items-center gap-2 italic uppercase">
               {nuevoProducto.id ? <Edit3 className="text-yellow-500" /> : <PlusCircle className="text-blue-500" />}
@@ -120,12 +125,12 @@ const Admin = () => {
             )}
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4 pb-4">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-500 uppercase ml-2">Nombre del Producto</label>
               <input 
-                type="text" required placeholder="Ej. Cable de Red CAT6"
-                className="w-full bg-[#0f172a] border border-slate-700 p-4 rounded-2xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm"
+                type="text" required placeholder="Nombre..."
+                className="w-full bg-[#0f172a] border border-slate-700 p-4 rounded-2xl outline-none focus:border-blue-500 text-sm"
                 value={nuevoProducto.nombre} onChange={(e) => setNuevoProducto({...nuevoProducto, nombre: e.target.value})}
               />
             </div>
@@ -149,23 +154,16 @@ const Admin = () => {
               </div>
             </div>
             
-            {/* NUEVO SISTEMA DE MULTI-CATEGORÍA */}
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase ml-2">Categorías (Puedes elegir varias)</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase ml-2">Categorías</label>
               <div className="flex flex-wrap gap-2 bg-[#0f172a] border border-slate-700 p-4 rounded-2xl">
                 {CATEGORIAS_DISPONIBLES.map(cat => {
                   const seleccionado = nuevoProducto.categoria && nuevoProducto.categoria.split(', ').includes(cat);
                   return (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => handleCategoriaToggle(cat)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                        seleccionado 
-                          ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-900/20' 
-                          : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500'
-                      }`}
-                    >
+                    <button key={cat} type="button" onClick={() => handleCategoriaToggle(cat)}
+                      className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all border ${
+                        seleccionado ? 'bg-blue-600 text-white border-blue-500' : 'bg-slate-800 text-slate-400 border-slate-700'
+                      }`}>
                       {cat}
                     </button>
                   );
@@ -185,104 +183,94 @@ const Admin = () => {
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-500 uppercase ml-2">Descripción</label>
               <textarea 
-                placeholder="Detalles técnicos..." rows="3"
+                placeholder="Detalles..." rows="3"
                 className="w-full bg-[#0f172a] border border-slate-700 p-4 rounded-2xl outline-none focus:border-blue-500 text-sm"
                 value={nuevoProducto.descripcion} onChange={(e) => setNuevoProducto({...nuevoProducto, descripcion: e.target.value})}
               ></textarea>
             </div>
 
-            <div className="flex items-center justify-between bg-[#0f172a] border border-slate-700 p-4 rounded-2xl cursor-pointer hover:border-amber-500/50 transition-all"
+            <div className="flex items-center justify-between bg-[#0f172a] border border-slate-700 p-4 rounded-2xl cursor-pointer"
                  onClick={() => setNuevoProducto({...nuevoProducto, en_promocion: !nuevoProducto.en_promocion})}>
               <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg transition-all ${nuevoProducto.en_promocion ? 'bg-amber-500 text-black' : 'bg-slate-800 text-slate-500'}`}>
+                <div className={`p-2 rounded-lg ${nuevoProducto.en_promocion ? 'bg-amber-500 text-black' : 'bg-slate-800 text-slate-500'}`}>
                   <Tag size={16} />
                 </div>
-                <div>
-                  <p className="text-sm font-black text-white uppercase italic tracking-tighter">¿Producto en Oferta?</p>
-                  <p className="text-[10px] text-slate-400 font-bold">Destacarlo en el inicio</p>
-                </div>
+                <p className="text-xs font-black text-white uppercase italic">¿En Oferta?</p>
               </div>
-              <div className={`w-12 h-6 rounded-full p-1 transition-all duration-300 ${nuevoProducto.en_promocion ? 'bg-amber-500' : 'bg-slate-700'}`}>
-                <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${nuevoProducto.en_promocion ? 'translate-x-6' : 'translate-x-0'}`}></div>
+              <div className={`w-10 h-5 rounded-full p-1 transition-all ${nuevoProducto.en_promocion ? 'bg-amber-500' : 'bg-slate-700'}`}>
+                <div className={`bg-white w-3 h-3 rounded-full transform transition-all ${nuevoProducto.en_promocion ? 'translate-x-5' : 'translate-x-0'}`}></div>
               </div>
             </div>
             
-            <button 
-              disabled={loading}
-              className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg active:scale-95 mt-2 ${
-                nuevoProducto.id ? 'bg-yellow-600 hover:bg-yellow-500 shadow-yellow-900/20' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/20'
-              }`}
-            >
+            <button disabled={loading} className={`w-full py-4 rounded-2xl font-black text-sm uppercase transition-all shadow-lg active:scale-95 ${
+                nuevoProducto.id ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-blue-600 hover:bg-blue-500'
+              }`}>
               {loading ? 'Procesando...' : nuevoProducto.id ? 'Actualizar Producto' : 'Guardar Producto'}
             </button>
           </form>
         </div>
 
-        {/* LISTADO */}
+        {/* LISTADO CON FILTROS AVANZADOS */}
         <div className="lg:col-span-7 bg-[#1e293b] p-8 rounded-[2.5rem] border border-slate-700 shadow-xl">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <div className="flex flex-col gap-6 mb-8">
             <h2 className="text-xl font-black text-white flex items-center gap-2 italic uppercase">
               <Package className="text-blue-500" /> Inventario
               <span className="bg-blue-500/10 text-blue-500 text-[10px] px-2 py-1 rounded-md ml-2">{productos.length}</span>
             </h2>
-            <div className="relative w-full md:w-64">
-              <Search className="absolute left-3 top-2.5 text-slate-500 size-4" />
-              <input 
-                type="text" placeholder="Buscar por nombre..."
-                className="w-full bg-[#0f172a] border border-slate-700 pl-10 pr-4 py-2 rounded-xl text-xs outline-none focus:border-blue-500"
-                value={busquedaAdmin} onChange={(e) => setBusquedaAdmin(e.target.value)}
-              />
+            
+            {/* BARRA DE FILTROS */}
+            <div className="flex flex-col md:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-3 text-slate-500 size-4" />
+                <input 
+                  type="text" placeholder="Buscar por nombre..."
+                  className="w-full bg-[#0f172a] border border-slate-700 pl-10 pr-4 py-3 rounded-xl text-xs outline-none focus:border-blue-500"
+                  value={busquedaAdmin} onChange={(e) => setBusquedaAdmin(e.target.value)}
+                />
+              </div>
+              
+              <div className="relative md:w-48">
+                <Filter className="absolute left-3 top-3 text-slate-500 size-4" />
+                <select 
+                  className="w-full bg-[#0f172a] border border-slate-700 pl-10 pr-4 py-3 rounded-xl text-xs outline-none focus:border-blue-500 appearance-none font-bold text-slate-300"
+                  value={filtroCategoriaAdmin} 
+                  onChange={(e) => setFiltroCategoriaAdmin(e.target.value)}
+                >
+                  <option value="Todas">Todas las Categorías</option>
+                  {CATEGORIAS_DISPONIBLES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
             </div>
           </div>
 
           <div className="grid gap-3">
-            {productosFiltradosAdmin.length > 0 ? (
-              productosFiltradosAdmin.map(p => (
-                <div key={p.id} className="group flex items-center justify-between p-4 bg-[#0f172a] rounded-3xl border border-slate-800 hover:border-slate-600 transition-all">
-                  <div className="flex items-center gap-4 w-full overflow-hidden">
-                    <div className="w-14 h-14 bg-white rounded-2xl p-2 flex shrink-0 items-center justify-center">
-                      <img src={p.imagen_url} alt="" className="max-h-full object-contain" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-black text-white uppercase italic tracking-tighter truncate">{p.nombre}</p>
-                        {p.en_promocion && (
-                          <span className="bg-amber-500 text-black text-[8px] px-1.5 py-0.5 rounded-sm font-black uppercase tracking-widest shrink-0">Promo</span>
-                        )}
-                      </div>
-                      
-                      {/* Mostrar las múltiples categorías como pildoras */}
-                      <div className="flex flex-wrap items-center gap-2 mt-1">
-                        {p.categoria && p.categoria.split(', ').map((cat, idx) => (
-                          <span key={idx} className="text-[8px] font-bold text-blue-500 uppercase bg-blue-500/5 px-2 py-0.5 rounded border border-blue-500/10 whitespace-nowrap">
-                            {cat}
-                          </span>
-                        ))}
-                      </div>
-
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-[10px] text-slate-400 font-bold">S/. {p.precio}</span>
-                        <span className={`text-[10px] font-bold ${p.stock <= 3 ? 'text-red-500' : 'text-green-500'}`}>
-                          Stock: {p.stock}
-                        </span>
-                      </div>
-                    </div>
+            {productosFiltradosAdmin.map(p => (
+              <div key={p.id} className="flex items-center justify-between p-4 bg-[#0f172a] rounded-3xl border border-slate-800 hover:border-slate-600 transition-all">
+                <div className="flex items-center gap-4 w-full overflow-hidden">
+                  <div className="w-14 h-14 bg-white rounded-2xl p-2 flex shrink-0 items-center justify-center">
+                    <img src={p.imagen_url} alt="" className="max-h-full object-contain" />
                   </div>
-                  <div className="flex gap-2 shrink-0 ml-2">
-                    <button onClick={() => prepararEdicion(p)} className="p-3 bg-blue-500/10 text-blue-500 rounded-xl hover:bg-blue-500 hover:text-white transition-all">
-                      <Edit3 size={16} />
-                    </button>
-                    <button onClick={() => eliminarProducto(p.id)} className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all">
-                      <Trash2 size={16} />
-                    </button>
+                  <div className="min-w-0">
+                    <p className="text-sm font-black text-white uppercase italic tracking-tighter truncate">{p.nombre}</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {p.categoria && p.categoria.split(', ').map((cat, idx) => (
+                        <span key={idx} className="text-[7px] font-bold text-blue-500 uppercase bg-blue-500/5 px-2 py-0.5 rounded border border-blue-500/10">
+                          {cat}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-20 text-slate-500 italic text-sm">
-                No se encontraron productos con ese nombre.
+                <div className="flex gap-2 shrink-0 ml-2">
+                  <button onClick={() => prepararEdicion(p)} className="p-3 bg-blue-500/10 text-blue-500 rounded-xl hover:bg-blue-500">
+                    <Edit3 size={16} />
+                  </button>
+                  <button onClick={() => eliminarProducto(p.id)} className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
-            )}
+            ))}
           </div>
         </div>
 
