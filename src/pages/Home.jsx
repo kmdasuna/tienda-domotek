@@ -302,7 +302,7 @@ const Home = () => {
                 S/. {productoSeleccionado.precio}
               </div>
               <div className="mt-6 md:mt-8 pt-6 md:pt-8 border-t border-slate-700">
-                <p className="text-slate-400 text-xs md:text-base leading-relaxed italic">{productoSeleccionado.description || "Tecnología de última generación disponible en Domotek."}</p>
+                <p className="text-slate-400 text-xs md:text-base leading-relaxed italic">{productoSeleccionado.descripcion || "Tecnología de última generación disponible en Domotek."}</p>
               </div>
               
               <a 
